@@ -11,9 +11,20 @@
 [[headers]]
   for = "/*"
   [headers.values]
-    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://images.pexels.com https://www.pexels.com https://i.ytimg.com; media-src 'self'; connect-src 'self' https://ovfzbebcsvjfwgnyywpy.supabase.co https://api.vapi.ai wss://api.vapi.ai https://*.daily.co wss://*.daily.co https://*.ingest.sentry.io; frame-src 'self' https://www.youtube.com; object-src 'none'; base-uri 'self'; form-action 'self'"
-    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
     X-Frame-Options = "DENY"
     X-XSS-Protection = "1; mode=block"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+    Strict-Transport-Security = "max-age=31536000; includeSubDomains"
+    # Microphone must stay enabled for Vapi voice calls; lock everything else down.
+    Permissions-Policy = "microphone=(self), camera=(), geolocation=(), payment=(), usb=()"
+    # Primary XSS defense. Merged from both prior policies and scoped to the
+    # origins this app actually loads:
+    #   - Supabase (edge functions + REST/realtime)
+    #   - Vapi + Daily.co (voice SDK signaling/media; needs blob: workers and wasm)
+    #   - Sentry (Vapi SDK error reporting), jsDelivr/unpkg (runtime CDN fallback)
+    #   - Google Fonts, Pexels images, YouTube embed/thumbnails
+    # NOTE: script-src keeps 'unsafe-inline'/'unsafe-eval' for the voice SDK.
+    # Tighten to 'self' 'wasm-unsafe-eval' once a live call is confirmed to work
+    # without them.
+    Content-Security-Policy = "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: https://cdn.jsdelivr.net https://unpkg.com; worker-src 'self' blob:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://images.pexels.com https://www.pexels.com https://i.ytimg.com; media-src 'self' blob: mediastream: https://*.daily.co; connect-src 'self' https://ovfzbebcsvjfwgnyywpy.supabase.co wss://ovfzbebcsvjfwgnyywpy.supabase.co https://api.vapi.ai https://*.vapi.ai wss://api.vapi.ai wss://*.vapi.ai https://*.daily.co wss://*.daily.co https://*.ingest.sentry.io; frame-src 'self' https://www.youtube.com https://*.daily.co; upgrade-insecure-requests"
